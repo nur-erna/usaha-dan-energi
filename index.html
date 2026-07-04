@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MPI: Usaha & Energi - Kelas 8 SMP (Edisi Papan Interaktif Digital)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      user-select: none; /* Mencegah seleksi teks yang tidak disengaja saat menyentuh PID */
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    /* Touch target helpers untuk Papan Interaktif Digital */
+    input[type="range"] {
+      height: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    /* Whiteboard Canvas overlay style */
+    #whiteboard-canvas {
+      pointer-events: none;
+    }
+    #whiteboard-canvas.drawing-mode {
+      pointer-events: auto;
+      cursor: crosshair;
+    }
+    /* Disable scrolling on touch when using whiteboard */
+    .no-scroll {
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col relative overflow-hidden">
+
+  <!-- FLOATING ANNOTATION TOOLBAR (Sangat berguna untuk Papan Interaktif Digital) -->
+  <div class="fixed bottom-6 right-6 z-50 bg-white/95 backdrop-blur-md shadow-2xl border-2 border-indigo-200 rounded-3xl p-4 flex flex-col items-center space-y-3 transition-all duration-300 transform scale-100 hover:scale-105">
+    <div class="text-[10px] font-black text-slate-400 tracking-wider">PID PEN TOOL</div>
+    
+    <!-- Toggle Coret-coret -->
+    <button onclick="toggleDrawingMode()" id="btn-draw-toggle" class="p-4 bg-slate-100 hover:bg-indigo-50 text-slate-700 rounded-2xl transition-all duration-150 flex items-center justify-center border-2 border-slate-200" title="Aktifkan Spidol Kelas">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+      </svg>
+    </button>
+
+    <!-- Toolbar tambahan saat menggambar aktif -->
+    <div id="draw-options" class="hidden flex flex-col items-center space-y-3 pt-3 border-t-2 border-slate-100">
+      <!-- Pilihan Warna -->
+      <button onclick="setPenColor('#ef4444')" class="w-8 h-8 rounded-full bg-red-500 border-2 border-white ring-2 ring-red-400/30 active:scale-95 transition"></button>
+      <button onclick="setPenColor('#3b82f6')" class="w-8 h-8 rounded-full bg-blue-500 border-2 border-white ring-2 ring-blue-400/30 active:scale-95 transition"></button>
+      <button onclick="setPenColor('#10b981')" class="w-8 h-8 rounded-full bg-emerald-500 border-2 border-white ring-2 ring-emerald-400/30 active:scale-95 transition"></button>
+      <button onclick="setPenColor('#eab308')" class="w-8 h-8 rounded-full bg-yellow-500 border-2 border-white ring-2 ring-yellow-400/30 active:scale-95 transition"></button>
+      
+      <!-- Penghapus / Bersihkan -->
+      <button onclick="clearWhiteboard()" class="p-3 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 active:scale-95 transition" title="Hapus Semua Coretan">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- KANVAS TRANSPARAN CORET-CORET -->
+  <canvas id="whiteboard-canvas" class="fixed inset-0 z-40 bg-transparent hidden"></canvas>
+
+  <!-- TOP HEADER -->
+  <header class="bg-gradient-to-r from-teal-600 via-blue-600 to-indigo-700 text-white shadow-lg sticky top-0 z-30 px-6 py-5 flex flex-wrap justify-between items-center">
+    <div class="flex items-center space-x-4">
+      <div class="bg-white/10 p-2.5 rounded-2xl border border-white/20">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9 text-yellow-300 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      </div>
+      <div>
+        <h1 class="font-extrabold text-2xl tracking-wide leading-none uppercase">USAHA, ENERGI, & PERUBAHANNYA</h1>
+        <p class="text-xs text-blue-100 font-semibold tracking-wide mt-1">Media Pembelajaran Interaktif &bull; Edisi Layar Sentuh Kelas VIII SMP</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-3 mt-3 sm:mt-0">
+      <span class="bg-teal-500/20 text-teal-300 px-4 py-2 rounded-xl text-xs font-bold border border-teal-400/30">MATA PELAJARAN IPA</span>
+      <span class="bg-blue-800/40 text-blue-200 px-4 py-2 rounded-xl text-xs font-bold border border-blue-400/30">KELAS VIII SMP</span>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER (SPLIT BAR) -->
+  <div class="flex flex-1 flex-col md:flex-row overflow-hidden relative">
+    
+    <!-- SIDE NAVIGATION FOR PID (Didesain dengan tombol besar dan tebal) -->
+    <aside class="w-full md:w-72 bg-white border-r border-slate-200 flex flex-row md:flex-col justify-around md:justify-start p-3 md:p-5 space-y-0 md:space-y-4 overflow-x-auto md:overflow-x-visible shadow-sm z-10 shrink-0">
+      <button onclick="switchTab('beranda')" id="btn-beranda" class="tab-btn flex items-center space-x-4 px-5 py-4 rounded-2xl transition duration-200 w-full font-black text-sm justify-center md:justify-start bg-blue-50 text-blue-600 border-2 border-blue-100 shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+        <span class="hidden md:inline text-base">Beranda</span>
+      </button>
+
+      <button onclick="switchTab('apersepsi')" id="btn-apersepsi" class="tab-btn flex items-center space-x-4 px-5 py-4 rounded-2xl transition duration-200 w-full font-black text-sm justify-center md:justify-start text-slate-600 hover:bg-slate-50 border-2 border-transparent shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <span class="hidden md:inline text-base">Apersepsi</span>
+      </button>
+
+      <button onclick="switchTab('materi')" id="btn-materi" class="tab-btn flex items-center space-x-4 px-5 py-4 rounded-2xl transition duration-200 w-full font-black text-sm justify-center md:justify-start text-slate-600 hover:bg-slate-50 border-2 border-transparent shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+        <span class="hidden md:inline text-base">Eksplorasi Konsep</span>
+      </button>
+
+      <button onclick="switchTab('simulasi')" id="btn-simulasi" class="tab-btn flex items-center space-x-4 px-5 py-4 rounded-2xl transition duration-200 w-full font-black text-sm justify-center md:justify-start text-slate-600 hover:bg-slate-50 border-2 border-transparent shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+        <span class="hidden md:inline text-base">Lab Virtual</span>
+      </button>
+
+      <button onclick="switchTab('asesmen')" id="btn-asesmen" class="tab-btn flex items-center space-x-4 px-5 py-4 rounded-2xl transition duration-200 w-full font-black text-sm justify-center md:justify-start text-slate-600 hover:bg-slate-50 border-2 border-transparent shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <span class="hidden md:inline text-base">Kuis Interaktif</span>
+      </button>
+
+      <button onclick="switchTab('refleksi')" id="btn-refleksi" class="tab-btn flex items-center space-x-4 px-5 py-4 rounded-2xl transition duration-200 w-full font-black text-sm justify-center md:justify-start text-slate-600 hover:bg-slate-50 border-2 border-transparent shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+        <span class="hidden md:inline text-base">Papan Refleksi</span>
+      </button>
+    </aside>
+
+    <!-- MAIN INTERACTIVE SCREEN -->
+    <main class="flex-1 p-6 md:p-8 overflow-y-auto custom-scrollbar relative z-10">
+
+      <!-- ================= BERANDA SECTION ================= -->
+      <section id="sec-beranda" class="space-y-6 animate-fadeIn">
+        <div class="bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-100 p-8 md:p-10 rounded-3xl border border-blue-200 shadow-sm relative overflow-hidden">
+          <div class="absolute -right-10 -bottom-10 opacity-10">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-80 h-80 text-indigo-900" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          </div>
+          <div class="relative z-10 max-w-3xl">
+            <span class="bg-indigo-600 text-white text-xs font-extrabold px-4 py-1.5 rounded-full uppercase tracking-widest">MENU UTAMA</span>
+            <h2 class="text-3xl md:text-4xl font-extrabold text-indigo-950 mt-4 leading-tight">Belajar Fisika Interaktif di Layar Sentuh Kelas!</h2>
+            <p class="text-slate-600 mt-3 leading-relaxed text-base md:text-lg">
+              Media Pembelajaran Interaktif (MPI) ini dirancang khusus untuk mempermudah kegiatan <i>microteaching</i> maupun demonstrasi kelas pada Papan Interaktif Digital (PID). Anda dapat berinteraksi langsung, mengubah variabel fisika, memutar/menghentikan simulasi, serta menggunakan spidol di sudut kanan bawah untuk memberi penekanan.
+            </p>
+            <div class="mt-8 flex flex-wrap gap-4">
+              <button onclick="switchTab('apersepsi')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-base px-8 py-4 rounded-2xl shadow-md shadow-indigo-200 transition duration-150 transform active:scale-95">
+                Mulai Pembelajaran &rarr;
+              </button>
+              <button onclick="switchTab('simulasi')" class="bg-white hover:bg-slate-50 text-indigo-600 font-extrabold text-base px-8 py-4 rounded-2xl border-2 border-indigo-200 shadow-sm transition duration-150 transform active:scale-95">
+                Buka Lab Virtual
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alur Pembelajaran Card Grid -->
+        <h3 class="text-lg font-bold text-slate-700 tracking-wide">PETA ALUR BELAJAR (Ketuk untuk navigasi cepat)</h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <button onclick="switchTab('apersepsi')" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-start hover:border-amber-400 text-left transition group">
+            <span class="text-amber-500 font-bold text-xs uppercase tracking-widest mb-1">Tahap 1</span>
+            <h4 class="font-extrabold text-slate-800 text-lg group-hover:text-amber-600">Apersepsi Realitas</h4>
+            <p class="text-xs text-slate-500 mt-1">Studi kasus logis dan permainan klasifikasi kasus usaha.</p>
+          </button>
+          <button onclick="switchTab('materi')" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-start hover:border-emerald-400 text-left transition group">
+            <span class="text-emerald-500 font-bold text-xs uppercase tracking-widest mb-1">Tahap 2</span>
+            <h4 class="font-extrabold text-slate-800 text-lg group-hover:text-emerald-600">Eksplorasi Konsep</h4>
+            <p class="text-xs text-slate-500 mt-1">Pemahaman matematis interaktif dari Usaha hingga Kekekalan Energi.</p>
+          </button>
+          <button onclick="switchTab('simulasi')" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-start hover:border-purple-400 text-left transition group">
+            <span class="text-purple-500 font-bold text-xs uppercase tracking-widest mb-1">Tahap 3</span>
+            <h4 class="font-extrabold text-slate-800 text-lg group-hover:text-purple-600">Eksperimen Virtual</h4>
+            <p class="text-xs text-slate-500 mt-1">Interaksi visual hukum kekekalan energi di lintasan skateboard.</p>
+          </button>
+          <button onclick="switchTab('asesmen')" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-start hover:border-rose-400 text-left transition group">
+            <span class="text-rose-500 font-bold text-xs uppercase tracking-widest mb-1">Tahap 4</span>
+            <h4 class="font-extrabold text-slate-800 text-lg group-hover:text-rose-600">Asesmen Kelas</h4>
+            <p class="text-xs text-slate-500 mt-1">Uji pemahaman mandiri atau berkelompok dengan skor instan.</p>
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= APERSEPSI SECTION ================= -->
+      <section id="sec-apersepsi" class="hidden space-y-6 animate-fadeIn">
+        <h2 class="text-2xl font-extrabold text-slate-800 flex items-center space-x-3">
+          <span class="bg-amber-100 text-amber-700 px-3 py-1.5 rounded-xl text-sm font-black">01</span>
+          <span>Apersepsi: Esensi & Definisi Usaha</span>
+        </h2>
+        
+        <div class="bg-amber-50/50 p-6 rounded-2xl border-2 border-amber-200 text-slate-700 text-sm md:text-base leading-relaxed space-y-4">
+          <p>
+            Dalam kehidupan sehari-hari, kata <strong>"Usaha"</strong> sering disamakan dengan bekerja, berjuang, atau belajar keras demi tujuan tertentu. Tapi tahukah kamu? Dalam ilmu Fisika, <strong>Usaha memiliki arti yang sangat spesifik dan berbeda!</strong> Mari kita selidiki mengapa ada kegiatan melelahkan yang dinilai "Nol" oleh Fisika.
+          </p>
+          <div class="bg-white p-4 rounded-xl border border-amber-200 shadow-sm">
+            <span class="text-xs font-black text-amber-600 tracking-wider block mb-2">💡 PENJELASAN UTAMA:</span>
+            <p class="text-xs md:text-sm text-slate-600">
+              Fisika melihat suatu tindakan sebagai usaha hanya jika terdapat <strong>gaya yang bekerja pada benda</strong> dan gaya tersebut <strong>menyebabkan benda berpindah kedudukan</strong>. Jika Anda sudah berjuang sekuat tenaga tetapi benda yang Anda dorong tidak berpindah sedikit pun, maka secara Fisika, nilai usaha Anda adalah <strong>nol</strong>.
+            </p>
+          </div>
+        </div>
+
+        <!-- Dua Kasus Pembanding Utama -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Kasus 1: Dorong Tembok -->
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="h-44 bg-slate-100 rounded-xl relative overflow-hidden flex items-center justify-center border border-slate-200">
+                <!-- SVG Mendorong Tembok -->
+                <svg viewBox="0 0 200 120" class="w-48 h-full">
+                  <rect x="150" y="10" width="30" height="100" fill="#94a3b8" rx="2" />
+                  <line x1="150" y1="20" x2="180" y2="20" stroke="#cbd5e1" stroke-width="2" />
+                  <line x1="150" y1="40" x2="180" y2="40" stroke="#cbd5e1" stroke-width="2" />
+                  <line x1="150" y1="60" x2="180" y2="60" stroke="#cbd5e1" stroke-width="2" />
+                  <line x1="150" y1="80" x2="180" y2="80" stroke="#cbd5e1" stroke-width="2" />
+                  <line x1="10" y1="110" x2="190" y2="110" stroke="#475569" stroke-width="3" />
+                  <circle cx="70" cy="40" r="10" fill="#3b82f6" />
+                  <line x1="70" y1="50" x2="80" y2="80" stroke="#3b82f6" stroke-width="4" stroke-linecap="round" />
+                  <line x1="80" y1="80" x2="65" y2="110" stroke="#3b82f6" stroke-width="4" stroke-linecap="round" />
+                  <line x1="80" y1="80" x2="95" y2="110" stroke="#3b82f6" stroke-width="4" stroke-linecap="round" />
+                  <line x1="75" y1="55" x2="150" y2="55" stroke="#3b82f6" stroke-width="4" stroke-linecap="round" />
+                  <path d="M 120 45 L 140 55 L 120 65" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" />
+                </svg>
+                <div class="absolute bottom-3 left-3 bg-red-100 text-red-700 text-xs px-3 py-1 rounded-md font-bold">Gaya Sangat Besar, Posisi Tetap Diam!</div>
+              </div>
+              <h3 class="font-extrabold text-slate-800 text-lg mt-4">Kasus A: Mendorong Tembok Kokoh</h3>
+              <p class="text-sm text-slate-500 mt-2 leading-relaxed">Siswa telah mengeluarkan energi kimia dalam otot, memproduksi keringat melimpah, dan kelelahan setelah mendorong tembok selama berjam-jam.</p>
+            </div>
+            <button onclick="showApersepsiExplanation('tembok')" class="mt-4 bg-slate-800 hover:bg-slate-900 text-white font-extrabold py-3.5 rounded-xl text-sm transition duration-150 transform active:scale-95">
+              Analisis Usaha Kasus Ini &rarr;
+            </button>
+          </div>
+
+          <!-- Kasus 2: Dorong Kursi -->
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="h-44 bg-slate-100 rounded-xl relative overflow-hidden flex items-center justify-center border border-slate-200">
+                <!-- SVG Mendorong Kursi -->
+                <svg viewBox="0 0 200 120" class="w-48 h-full">
+                  <line x1="10" y1="110" x2="190" y2="110" stroke="#475569" stroke-width="3" />
+                  <rect x="130" y="60" width="25" height="5" fill="#f59e0b" rx="1" />
+                  <line x1="130" y1="65" x2="130" y2="110" stroke="#f59e0b" stroke-width="3" />
+                  <line x1="155" y1="65" x2="155" y2="110" stroke="#f59e0b" stroke-width="3" />
+                  <rect x="150" y="35" width="5" height="25" fill="#f59e0b" rx="1" />
+                  <line x1="105" y1="110" x2="130" y2="110" stroke="#10b981" stroke-width="2" stroke-dasharray="4" />
+                  <path d="M 115 105 L 125 110 L 115 115" fill="none" stroke="#10b981" stroke-width="2" />
+                  <circle cx="50" cy="40" r="10" fill="#10b981" />
+                  <line x1="50" y1="50" x2="55" y2="80" stroke="#10b981" stroke-width="4" stroke-linecap="round" />
+                  <line x1="55" y1="80" x2="45" y2="110" stroke="#10b981" stroke-width="4" stroke-linecap="round" />
+                  <line x1="55" y1="80" x2="65" y2="110" stroke="#10b981" stroke-width="4" stroke-linecap="round" />
+                  <line x1="53" y1="55" x2="130" y2="60" stroke="#10b981" stroke-width="4" stroke-linecap="round" />
+                </svg>
+                <div class="absolute bottom-3 left-3 bg-emerald-100 text-emerald-700 text-xs px-3 py-1 rounded-md font-bold">Gaya Sedang, Kursi Bergeser!</div>
+              </div>
+              <h3 class="font-extrabold text-slate-800 text-lg mt-4">Kasus B: Mendorong Kursi Beroda</h3>
+              <p class="text-sm text-slate-500 mt-2 leading-relaxed">Siswa memberikan dorongan kecil yang biasa saja. Kursi beroda langsung berderit menjauh sejauh 3 meter ke depan.</p>
+            </div>
+            <button onclick="showApersepsiExplanation('kursi')" class="mt-4 bg-slate-800 hover:bg-slate-900 text-white font-extrabold py-3.5 rounded-xl text-sm transition duration-150 transform active:scale-95">
+              Analisis Usaha Kasus Ini &rarr;
+            </button>
+          </div>
+        </div>
+
+        <!-- Ulasan Apersepsi Box -->
+        <div id="apersepsi-explanation" class="hidden bg-indigo-50 border-2 border-indigo-200 p-6 rounded-2xl transition-all duration-300">
+          <div class="flex items-start space-x-4">
+            <div class="bg-indigo-600 text-white p-3 rounded-xl">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <div>
+              <h4 id="explanation-title" class="font-extrabold text-indigo-950 text-lg">Judul Analisis</h4>
+              <p id="explanation-text" class="text-sm md:text-base text-slate-700 mt-2 leading-relaxed">Keterangan logis...</p>
+              <div class="mt-4 bg-white p-4 rounded-xl border border-indigo-100">
+                <p class="text-xs text-indigo-700 font-extrabold uppercase tracking-widest">Kesimpulan Penting:</p>
+                <p id="explanation-conclusion" class="text-xs md:text-sm text-slate-800 mt-1 font-mono italic">Penjelasan rumus...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GAME AKTIVITAS PAPAN DIGITAL: KLASIFIKASI KASUS USAHA -->
+        <div class="bg-slate-100 p-6 rounded-3xl border border-slate-300 shadow-inner space-y-4">
+          <div class="text-center">
+            <span class="bg-amber-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest">Aktivitas Interaktif Papan Tulis</span>
+            <h3 class="font-extrabold text-slate-800 text-xl mt-2">Klasifikasi Kasus: "Usaha" atau "Bukan Usaha"?</h3>
+            <p class="text-xs text-slate-500 mt-1">Ajaklah perwakilan murid maju ke depan papan tulis digital untuk menyortir kasus-kasus fisika berikut ini!</p>
+          </div>
+
+          <!-- Permainan Klasifikasi Grid -->
+          <div id="classification-game" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            <!-- Item Kasus 1 -->
+            <div id="case-1" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-3">
+              <span class="text-xs font-bold text-slate-400">Kasus 1</span>
+              <p class="text-sm text-slate-700 font-bold leading-relaxed">"Siti menaruh tas sekolah yang berat di atas kepalanya sambil berdiri tegak di tempat menanti jemputan bus selama 15 menit."</p>
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="checkClassification(1, 'no', this)" class="bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-700 font-black py-3 rounded-xl text-xs transition border border-transparent">Bukan Usaha (W = 0)</button>
+                <button onclick="checkClassification(1, 'yes', this)" class="bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 text-slate-700 font-black py-3 rounded-xl text-xs transition border border-transparent">Usaha Fisika (W > 0)</button>
+              </div>
+              <p class="case-feedback text-xs hidden font-medium mt-1"></p>
+            </div>
+
+            <!-- Item Kasus 2 -->
+            <div id="case-2" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-3">
+              <span class="text-xs font-bold text-slate-400">Kasus 2</span>
+              <p class="text-sm text-slate-700 font-bold leading-relaxed">"Andi menarik mainan mobil-mobilannya di atas lantai sejauh 4 meter dari ruang tamu menuju kamarnya."</p>
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="checkClassification(2, 'no', this)" class="bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-700 font-black py-3 rounded-xl text-xs transition border border-transparent">Bukan Usaha (W = 0)</button>
+                <button onclick="checkClassification(2, 'yes', this)" class="bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 text-slate-700 font-black py-3 rounded-xl text-xs transition border border-transparent">Usaha Fisika (W > 0)</button>
+              </div>
+              <p class="case-feedback text-xs hidden font-medium mt-1"></p>
+            </div>
+
+            <!-- Item Kasus 3 -->
+            <div id="case-3" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-3">
+              <span class="text-xs font-bold text-slate-400">Kasus 3</span>
+              <p class="text-sm text-slate-700 font-bold leading-relaxed">"Seorang atlet angkat besi berhasil mengangkat beban seberat 120 kg dari permukaan lantai sampai di atas kepalanya."</p>
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="checkClassification(3, 'no', this)" class="bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-700 font-black py-3 rounded-xl text-xs transition border border-transparent">Bukan Usaha (W = 0)</button>
+                <button onclick="checkClassification(3, 'yes', this)" class="bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 text-slate-700 font-black py-3 rounded-xl text-xs transition border border-transparent">Usaha Fisika (W > 0)</button>
+              </div>
+              <p class="case-feedback text-xs hidden font-medium mt-1"></p>
+            </div>
+
+            <!-- Item Kasus 4 -->
+            <div id="case-4" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-3">
+              <span class="text-xs font-bold text-slate-400">Kasus 4</span>
+              <p class="text-sm text-slate-700 font-bold leading-relaxed">"Seseorang memikul kardus mie instan yang berat di pundaknya dan berjalan mendatar sejauh 10 meter dengan kecepatan konstan."</p>
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="checkClassification(4, 'no', this)" class="bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-700 font-black py-3 rounded-xl text-xs transition border border-transparent">Bukan Usaha (W = 0)</button>
+                <button onclick="checkClassification(4, 'yes', this)" class="bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 text-slate-700 font-black py-3 rounded-xl text-xs transition border border-transparent">Usaha Fisika (W > 0)</button>
+              </div>
+              <p class="case-feedback text-xs hidden font-medium mt-1"></p>
+            </div>
+
+            <!-- Item Kasus 5 -->
+            <div id="case-5" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-3">
+              <span class="text-xs font-bold text-slate-400">Kasus 5</span>
+              <p class="text-sm text-slate-700 font-bold leading-relaxed">"Siswa mendorong mobil mogok sekuat tenaga bersama warga, tetapi mobil tersebut tetap tidak bergeser satu sentimeter pun."</p>
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="checkClassification(5, 'no', this)" class="bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-700 font-black py-3 rounded-xl text-xs transition border border-transparent">Bukan Usaha (W = 0)</button>
+                <button onclick="checkClassification(5, 'yes', this)" class="bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 text-slate-700 font-black py-3 rounded-xl text-xs transition border border-transparent">Usaha Fisika (W > 0)</button>
+              </div>
+              <p class="case-feedback text-xs hidden font-medium mt-1"></p>
+            </div>
+
+            <!-- Item Kasus 6 -->
+            <div id="case-6" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-3">
+              <span class="text-xs font-bold text-slate-400">Kasus 6</span>
+              <p class="text-sm text-slate-700 font-bold leading-relaxed">"Seekor kucing tidur nyenyak di atas sofa sepanjang sore tanpa melakukan aktivitas gerakan fisik apa pun."</p>
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="checkClassification(6, 'no', this)" class="bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-700 font-black py-3 rounded-xl text-xs transition border border-transparent">Bukan Usaha (W = 0)</button>
+                <button onclick="checkClassification(6, 'yes', this)" class="bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 text-slate-700 font-black py-3 rounded-xl text-xs transition border border-transparent">Usaha Fisika (W > 0)</button>
+              </div>
+              <p class="case-feedback text-xs hidden font-medium mt-1"></p>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= MATERI SECTION ================= -->
+      <section id="sec-materi" class="hidden space-y-6 animate-fadeIn">
+        <h2 class="text-2xl font-extrabold text-slate-800 flex items-center space-x-3">
+          <span class="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-xl text-sm font-black">02</span>
+          <span>Eksplorasi Konsep Terpadu</span>
+        </h2>
+        <p class="text-slate-600 text-sm">Ketuk sub-bab di bawah untuk mempelajari penurunan rumus fisika beserta kalkulator langkah-demi-langkah.</p>
+
+        <!-- Sub Tabs Navigasi Materi (Dibuat lebar dan mudah ditap di PID) -->
+        <div class="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
+          <button onclick="switchSubMateri('usaha')" id="btn-sub-usaha" class="materi-tab-btn px-5 py-3.5 rounded-2xl font-black text-sm border-2 border-emerald-500 bg-emerald-50 text-emerald-700">1. Konsep Usaha (W)</button>
+          <button onclick="switchSubMateri('ep')" id="btn-sub-ep" class="materi-tab-btn px-5 py-3.5 rounded-2xl font-black text-sm border-2 border-transparent text-slate-600 hover:bg-slate-100">2. Energi Potensial (Ep)</button>
+          <button onclick="switchSubMateri('ek')" id="btn-sub-ek" class="materi-tab-btn px-5 py-3.5 rounded-2xl font-black text-sm border-2 border-transparent text-slate-600 hover:bg-slate-100">3. Energi Kinetik (Ek)</button>
+          <button onclick="switchSubMateri('em')" id="btn-sub-em" class="materi-tab-btn px-5 py-3.5 rounded-2xl font-black text-sm border-2 border-transparent text-slate-600 hover:bg-slate-100">4. Energi Mekanik (Em)</button>
+        </div>
+
+        <!-- 1. SUB USAHA -->
+        <div id="materi-usaha" class="materi-block space-y-6">
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="space-y-4">
+              <h3 class="text-xl font-extrabold text-slate-800">Menghitung Usaha Mekanik</h3>
+              <p class="text-sm md:text-base text-slate-600 leading-relaxed">
+                Usaha (W) terjadi jika gaya (F) yang dialami sebuah benda menghasilkan perpindahan kedudukan (s) yang searah dengan arah gaya tersebut. 
+              </p>
+              <div class="bg-slate-100 p-4 rounded-xl flex flex-col items-center justify-center border border-slate-200 py-6">
+                <span class="text-xs font-bold text-slate-400 mb-1">RUMUS USAHA</span>
+                <span class="text-3xl font-black text-emerald-700 font-mono">W = F &times; s</span>
+              </div>
+              <div class="space-y-2 text-xs md:text-sm text-slate-500">
+                <p>&bull; <strong>W</strong> (Work) = Usaha yang dilakukan (Joule atau J, di mana 1 Joule = 1 N &times; m)</p>
+                <p>&bull; <strong>F</strong> (Force) = Gaya searah pergeseran (Newton atau N)</p>
+                <p>&bull; <strong>s</strong> (Space) = Besar perpindahan benda (Meter atau m)</p>
+              </div>
+              <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-100 text-xs text-emerald-800 space-y-1">
+                <strong>Contoh Nyata Usaha:</strong>
+                <p>Ketika Anda mendorong troli belanja dengan gaya sebesar 50 Newton sehingga troli bergeser sejauh 10 meter ke depan.</p>
+              </div>
+            </div>
+
+            <!-- Kalkulator & Animasi Usaha -->
+            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col justify-between space-y-6">
+              <div>
+                <h4 class="font-extrabold text-slate-800 text-sm mb-4">Ubah Nilai Gaya & Perpindahan:</h4>
+                <div class="space-y-4">
+                  <div>
+                    <div class="flex justify-between text-xs font-bold mb-1">
+                      <span class="text-slate-600">Gaya Tarik (F)</span>
+                      <span class="text-emerald-700"><span id="val-f">15</span> N</span>
+                    </div>
+                    <input type="range" id="input-f" min="0" max="100" value="15" oninput="runUsahaCalc()" class="w-full accent-emerald-600">
+                  </div>
+                  <div>
+                    <div class="flex justify-between text-xs font-bold mb-1">
+                      <span class="text-slate-600">Jarak Perpindahan (s)</span>
+                      <span class="text-emerald-700"><span id="val-s">8</span> m</span>
+                    </div>
+                    <input type="range" id="input-s" min="0" max="30" value="8" oninput="runUsahaCalc()" class="w-full accent-emerald-600">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Animasi Visual Balok -->
+              <div class="bg-white h-24 rounded-xl border border-slate-200 relative overflow-hidden flex items-end">
+                <div class="absolute bottom-0 left-0 w-full h-2 bg-slate-300"></div>
+                <div id="materi-box-usaha" class="w-12 h-12 bg-emerald-500 rounded-lg flex items-center justify-center text-white font-black text-xs absolute bottom-2 shadow-md transition-all duration-300" style="left: 10%">
+                  m
+                </div>
+                <!-- Panah Gaya -->
+                <div id="materi-arrow-usaha" class="absolute bottom-7 left-2 flex items-center transition-all duration-300">
+                  <div class="h-2 bg-red-400 rounded-l" style="width: 50px;"></div>
+                  <div class="w-0 h-0 border-y-8 border-y-transparent border-l-8 border-l-red-400"></div>
+                </div>
+              </div>
+
+              <!-- Hasil & Langkah Penyelesaian -->
+              <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl space-y-2">
+                <div class="text-center">
+                  <span class="text-xs text-slate-500 font-bold">Hasil Usaha (W):</span>
+                  <div class="text-3xl font-black text-emerald-700 font-mono mt-1"><span id="res-u-value">120</span> J</div>
+                </div>
+                <div class="border-t border-emerald-100 pt-2">
+                  <span class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">Langkah Penyelesaian Matematis:</span>
+                  <div class="text-xs text-slate-600 font-mono mt-1 space-y-1">
+                    <p>&bull; Diketahui: F = <span id="step-u-f">15</span> N, s = <span id="step-u-s">8</span> m</p>
+                    <p>&bull; Rumus: W = F &times; s</p>
+                    <p>&bull; Subtitusi: W = <span id="sub-u-f">15</span> &times; <span id="sub-u-s">8</span></p>
+                    <p class="font-bold text-emerald-800">&bull; Hasil: W = <span id="fin-u">120</span> Joule</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. SUB EP -->
+        <div id="materi-ep" class="materi-block hidden space-y-6">
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="space-y-4">
+              <h3 class="text-xl font-extrabold text-slate-800">Menghitung Energi Potensial Gravitasi</h3>
+              <p class="text-sm md:text-base text-slate-600 leading-relaxed">
+                Energi potensial (Ep) adalah energi yang tersimpan di dalam benda akibat letak ketinggian posisinya dalam medan gravitasi. Semakin tinggi letak benda, semakin besar kapasitas energinya.
+              </p>
+              <div class="bg-slate-100 p-4 rounded-xl flex flex-col items-center justify-center border border-slate-200 py-6">
+                <span class="text-xs font-bold text-slate-400 mb-1">RUMUS ENERGI POTENSIAL GRAVITASI</span>
+                <span class="text-3xl font-black text-blue-700 font-mono">Ep = m &times; g &times; h</span>
+              </div>
+              <div class="space-y-2 text-xs md:text-sm text-slate-500">
+                <p>&bull; <strong>Ep</strong> = Energi Potensial (Joule atau J)</p>
+                <p>&bull; <strong>m</strong> = Massa benda (Kilogram atau kg)</p>
+                <p>&bull; <strong>g</strong> = Percepatan gravitasi bumi (kurang lebih bernilai 10 m/s2)</p>
+                <p>&bull; <strong>h</strong> = Tinggi kedudukan benda dari acuan permukaan tanah (Meter atau m)</p>
+              </div>
+              <div class="p-4 bg-blue-50 rounded-xl border border-blue-100 text-xs text-blue-800 space-y-1">
+                <strong>Contoh Nyata Energi Potensial:</strong>
+                <p>Buah kelapa bermassa 2 kg yang menggantung di pohon setinggi 8 meter memiliki energi potensial gravitasi sebelum akhirnya jatuh bebas.</p>
+              </div>
+            </div>
+
+            <!-- Kalkulator & Animasi EP -->
+            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col justify-between space-y-6">
+              <div>
+                <h4 class="font-extrabold text-slate-800 text-sm mb-4">Ubah Nilai Massa & Ketinggian:</h4>
+                <div class="space-y-4">
+                  <div>
+                    <div class="flex justify-between text-xs font-bold mb-1">
+                      <span class="text-slate-600">Massa (m)</span>
+                      <span class="text-blue-700"><span id="val-ep-m">3</span> kg</span>
+                    </div>
+                    <input type="range" id="input-ep-m" min="1" max="15" value="3" oninput="runEpCalc()" class="w-full accent-blue-600">
+                  </div>
+                  <div>
+                    <div class="flex justify-between text-xs font-bold mb-1">
+                      <span class="text-slate-600">Tinggi Kedudukan (h)</span>
+                      <span class="text-blue-700"><span id="val-ep-h">6</span> m</span>
+                    </div>
+                    <input type="range" id="input-ep-h" min="0" max="10" value="6" oninput="runEpCalc()" class="w-full accent-blue-600">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Animasi Visual EP (Apel) -->
+              <div class="bg-white h-28 rounded-xl border border-slate-200 relative overflow-hidden flex justify-center">
+                <div class="absolute bottom-0 w-full h-2 bg-emerald-800"></div>
+                <!-- Apel Merah -->
+                <div id="materi-box-ep" class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white font-extrabold text-[10px] absolute shadow-sm transition-all duration-300" style="bottom: 60px">
+                  m
+                  <div class="w-1 h-2.5 bg-amber-800 absolute -top-1 rounded"></div>
+                </div>
+              </div>
+
+              <!-- Hasil & Langkah Penyelesaian EP -->
+              <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl space-y-2">
+                <div class="text-center">
+                  <span class="text-xs text-slate-500 font-bold">Energi Potensial (Ep):</span>
+                  <div class="text-3xl font-black text-blue-700 font-mono mt-1"><span id="res-ep-value">180</span> J</div>
+                </div>
+                <div class="border-t border-blue-100 pt-2">
+                  <span class="text-[10px] font-bold text-blue-800 uppercase tracking-wider block">Langkah Penyelesaian Matematis:</span>
+                  <div class="text-xs text-slate-600 font-mono mt-1 space-y-1">
+                    <p>&bull; Diketahui: m = <span id="step-ep-m">3</span> kg, h = <span id="step-ep-h">6</span> m, g = 10 m/s2</p>
+                    <p>&bull; Rumus: Ep = m &times; g &times; h</p>
+                    <p>&bull; Subtitusi: Ep = <span id="sub-ep-m">3</span> &times; 10 &times; <span id="sub-ep-h">6</span></p>
+                    <p class="font-bold text-blue-800">&bull; Hasil: Ep = <span id="fin-ep">180</span> Joule</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. SUB EK -->
+        <div id="materi-ek" class="materi-block hidden space-y-6">
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="space-y-4">
+              <h3 class="text-xl font-extrabold text-slate-800">Menghitung Energi Kinetik</h3>
+              <p class="text-sm md:text-base text-slate-600 leading-relaxed">
+                Energi Kinetik (Ek) adalah energi gerak yang dimiliki oleh suatu benda bermassa karena kecepatannya meluncur. Setiap benda diam tidak memiliki Energi Kinetik sama sekali (kecepatan = 0).
+              </p>
+              <div class="bg-slate-100 p-4 rounded-xl flex flex-col items-center justify-center border border-slate-200 py-6">
+                <span class="text-xs font-bold text-slate-400 mb-1">RUMUS ENERGI KINETIK</span>
+                <span class="text-3xl font-black text-purple-700 font-mono">Ek = 0,5 &times; m &times; v<sup>2</sup></span>
+              </div>
+              <div class="space-y-2 text-xs md:text-sm text-slate-500">
+                <p>&bull; <strong>Ek</strong> = Energi Kinetik (Joule atau J)</p>
+                <p>&bull; <strong>m</strong> = Massa benda (Kilogram atau kg)</p>
+                <p>&bull; <strong>v</strong> (velocity) = Kecepatan gerak (Meter per detik atau m/s)</p>
+              </div>
+              <div class="p-4 bg-purple-50 rounded-xl border border-purple-100 text-xs text-purple-800 space-y-1">
+                <strong>Contoh Nyata Energi Kinetik:</strong>
+                <p>Mobil bermassa 1000 kg melaju dengan kecepatan 20 m/s di jalan raya memiliki energi gerak kinetik yang sangat besar.</p>
+              </div>
+            </div>
+
+            <!-- Kalkulator & Animasi EK -->
+            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col justify-between space-y-6">
+              <div>
+                <h4 class="font-extrabold text-slate-800 text-sm mb-4">Ubah Nilai Massa & Kecepatan:</h4>
+                <div class="space-y-4">
+                  <div>
+                    <div class="flex justify-between text-xs font-bold mb-1">
+                      <span class="text-slate-600">Massa (m)</span>
+                      <span class="text-purple-700"><span id="val-ek-m">8</span> kg</span>
+                    </div>
+                    <input type="range" id="input-ek-m" min="2" max="20" step="2" value="8" oninput="runEkCalc()" class="w-full accent-purple-600">
+                  </div>
+                  <div>
+                    <div class="flex justify-between text-xs font-bold mb-1">
+                      <span class="text-slate-600">Kecepatan (v)</span>
+                      <span class="text-purple-700"><span id="val-ek-v">5</span> m/s</span>
+                    </div>
+                    <input type="range" id="input-ek-v" min="0" max="15" value="5" oninput="runEkCalc()" class="w-full accent-purple-600">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Animasi Visual EK (Mobil) -->
+              <div class="bg-white h-24 rounded-xl border border-slate-200 relative overflow-hidden flex items-end">
+                <div class="absolute bottom-0 left-0 w-full h-2 bg-slate-400"></div>
+                <div id="materi-box-ek" class="w-14 h-8 bg-purple-500 rounded-t-lg absolute bottom-2 flex flex-col justify-end p-1 border border-purple-600 shadow-sm transition-all duration-300" style="left: 10%">
+                  <div class="flex justify-between px-1 -mb-2">
+                    <div class="w-3 h-3 bg-slate-800 rounded-full border border-white animate-spin"></div>
+                    <div class="w-3 h-3 bg-slate-800 rounded-full border border-white animate-spin"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Hasil & Langkah Penyelesaian EK -->
+              <div class="bg-purple-50 border border-purple-200 p-4 rounded-xl space-y-2">
+                <div class="text-center">
+                  <span class="text-xs text-slate-500 font-bold">Energi Kinetik (Ek):</span>
+                  <div class="text-3xl font-black text-purple-700 font-mono mt-1"><span id="res-ek-value">100</span> J</div>
+                </div>
+                <div class="border-t border-purple-100 pt-2">
+                  <span class="text-[10px] font-bold text-purple-800 uppercase tracking-wider block">Langkah Penyelesaian Matematis:</span>
+                  <div class="text-xs text-slate-600 font-mono mt-1 space-y-1">
+                    <p>&bull; Diketahui: m = <span id="step-ek-m">8</span> kg, v = <span id="step-ek-v">5</span> m/s</p>
+                    <p>&bull; Rumus: Ek = 0,5 &times; m &times; v<sup>2</sup></p>
+                    <p>&bull; Subtitusi: Ek = 0,5 &times; <span id="sub-ek-m">8</span> &times; <span id="sub-ek-v2">25</span></p>
+                    <p class="font-bold text-purple-800">&bull; Hasil: Ek = <span id="fin-ek">100</span> Joule</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. SUB EM -->
+        <div id="materi-em" class="materi-block hidden space-y-6">
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+            <h3 class="text-xl font-extrabold text-slate-800">Hukum Kekekalan Energi Mekanik</h3>
+            <p class="text-sm md:text-base text-slate-600 leading-relaxed">
+              <strong>Energi Mekanik (Em)</strong> adalah total gabungan dari Energi Potensial dan Energi Kinetik suatu objek. Pada kondisi ideal tanpa adanya gesekan eksternal (misal gesekan udara), nilai Energi Mekanik akan selalu <strong>Konstan / Tetap</strong> di posisi manapun benda berada!
+            </p>
+            
+            <div class="bg-slate-100 p-6 rounded-xl border border-slate-200 text-center space-y-2">
+              <span class="text-xs font-bold text-slate-400 block">RUMUS HUKUM KEKEKALAN ENERGI MEKANIK</span>
+              <span class="text-2xl md:text-3xl font-black text-slate-800 font-mono block">Em1 = Em2</span>
+              <span class="text-lg md:text-xl font-bold text-slate-500 font-mono block">Ep1 + Ek1 = Ep2 + Ek2</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-100">
+              <div class="space-y-2 text-sm text-slate-600 leading-normal">
+                <strong class="text-slate-800 block mb-2">💡 Penjelasan Fenomena Jatuh Bebas:</strong>
+                <p>&bull; <strong>Saat di Ketinggian Maksimum:</strong> Kecepatan masih nol, sehingga benda hanya memiliki Energi Potensial maksimum (Ek = 0).</p>
+                <p>&bull; <strong>Saat Mulai Meluncur Jatuh:</strong> Tinggi berkurang (Ep menurun) tetapi kecepatan bertambah (Ek meningkat). Terjadi transfer energi dari Ep menjadi Ek.</p>
+                <p>&bull; <strong>Saat Menyentuh Tanah:</strong> Ketinggian menjadi nol (Ep = 0), sehingga seluruh energi telah diubah menjadi Energi Kinetik maksimum.</p>
+              </div>
+              <div class="flex items-center justify-center">
+                <div class="w-full max-w-[320px] bg-white border border-slate-200 p-4 rounded-xl flex flex-col justify-between h-48 relative">
+                  <div class="flex justify-between items-center border-b pb-2">
+                    <span class="text-xs font-bold text-slate-500">Tinggi Maksimum</span>
+                    <span class="text-xs bg-blue-100 text-blue-700 font-black px-2 py-0.5 rounded">Ep Maks, Ek Nol</span>
+                  </div>
+                  <div class="flex justify-between items-center py-2 text-slate-400">
+                    <span class="text-xs italic">Meluncur Jatuh...</span>
+                    <span class="text-xs font-semibold text-teal-600">Ep berkurang &rarr; Ek bertambah</span>
+                  </div>
+                  <div class="flex justify-between items-center border-t pt-2">
+                    <span class="text-xs font-bold text-slate-500">Di Atas Tanah</span>
+                    <span class="text-xs bg-purple-100 text-purple-700 font-black px-2 py-0.5 rounded">Ep Nol, Ek Maks</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= LAB VIRTUAL SECTION (SKATE PARK) ================= -->
+      <section id="sec-simulasi" class="hidden space-y-6 animate-fadeIn">
+        <div class="flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <h2 class="text-2xl font-extrabold text-slate-800 flex items-center space-x-3">
+              <span class="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-xl text-sm font-black">03</span>
+              <span>Lab Virtual Skate Park: Usaha & Energi</span>
+            </h2>
+            <p class="text-slate-600 text-sm">Amati secara langsung konversi Energi Potensial menjadi Energi Kinetik dengan berbagai variabel eksternal.</p>
+          </div>
+          <!-- PID Control Shortcuts -->
+          <div class="flex flex-wrap gap-2">
+            <button onclick="toggleSimPlay()" id="btn-sim-play" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm px-6 py-3.5 rounded-xl transition duration-150 transform active:scale-95 shadow-md flex items-center space-x-2">
+              <span id="play-btn-icon">⏸</span> <span id="play-btn-text">Pause</span>
+            </button>
+            <button onclick="resetSkater()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-sm px-6 py-3.5 rounded-xl transition duration-150 transform active:scale-95 border border-slate-300">
+              Reset Skater
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Canvas Simulasi -->
+          <div class="lg:col-span-2 bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-700 p-5 relative flex flex-col justify-between">
+            <div class="absolute top-4 left-4 bg-slate-800/80 backdrop-blur text-white px-4 py-2.5 rounded-xl border border-slate-700/50 flex flex-col">
+              <span class="text-[9px] text-teal-400 font-black tracking-wider">LINTASAN EKSPERIMEN FISIKA</span>
+              <span class="text-sm text-yellow-400 font-black mt-0.5">Energy Skate Park Basics</span>
+            </div>
+
+            <!-- Canvas Container -->
+            <div class="w-full flex justify-center items-center py-6">
+              <canvas id="physics-canvas" width="550" height="320" class="bg-gradient-to-b from-slate-950 via-sky-950 to-indigo-950 rounded-2xl border border-slate-800 w-full max-w-[550px] shadow-inner"></canvas>
+            </div>
+
+            <!-- Controls Panel PID Friendly (Besar & Mudah Disentuh) -->
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-6 border-t border-slate-800/80 pt-5">
+              <div>
+                <label class="block text-xs font-bold text-slate-400 mb-2">Massa (m) : <span id="lbl-mass" class="text-yellow-400 font-black">60 kg</span></label>
+                <input type="range" id="sim-control-mass" min="20" max="100" value="60" oninput="updateSimParams()" class="w-full accent-yellow-400 bg-slate-800 h-2 rounded-lg appearance-none">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-400 mb-2">Gravitasi (g) : <span id="lbl-gravity" class="text-yellow-400 font-black">Bumi (9.8)</span></label>
+                <select id="sim-control-grav" onchange="updateSimParams()" class="w-full text-sm bg-slate-800 text-white rounded-xl p-3 border border-slate-700 font-bold focus:outline-none focus:border-yellow-400">
+                  <option value="9.8">Bumi (9.8 m/s2)</option>
+                  <option value="1.6">Bulan (1.6 m/s2)</option>
+                  <option value="24.8">Jupiter (24.8 m/s2)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-400 mb-2">Gesekan (Friction) : <span id="lbl-friction" class="text-yellow-400 font-black">Nol</span></label>
+                <input type="range" id="sim-control-fric" min="0" max="10" value="0" oninput="updateSimParams()" class="w-full accent-yellow-400 bg-slate-800 h-2 rounded-lg appearance-none">
+              </div>
+            </div>
+          </div>
+
+          <!-- Grafik Batang & Catatan Observasi Guru -->
+          <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between">
+            <div class="space-y-6">
+              <h3 class="font-extrabold text-slate-800 text-lg flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-ping"></span>
+                Grafik Energi Mekanik
+              </h3>
+              
+              <!-- Batang-Batang Energi -->
+              <div class="space-y-5">
+                <!-- Energi Kinetik -->
+                <div>
+                  <div class="flex justify-between text-xs font-extrabold mb-1">
+                    <span class="text-slate-600">Energi Kinetik (Ek)</span>
+                    <span class="text-emerald-600 font-black" id="graph-ek-val">0 J</span>
+                  </div>
+                  <div class="w-full bg-slate-100 h-4 rounded-full overflow-hidden">
+                    <div id="graph-ek" class="bg-emerald-500 h-full transition-all duration-75" style="width: 0%"></div>
+                  </div>
+                </div>
+
+                <!-- Energi Potensial -->
+                <div>
+                  <div class="flex justify-between text-xs font-extrabold mb-1">
+                    <span class="text-slate-600">Energi Potensial (Ep)</span>
+                    <span class="text-blue-600 font-black" id="graph-ep-val">0 J</span>
+                  </div>
+                  <div class="w-full bg-slate-100 h-4 rounded-full overflow-hidden">
+                    <div id="graph-ep" class="bg-blue-500 h-full transition-all duration-75" style="width: 0%"></div>
+                  </div>
+                </div>
+
+                <!-- Energi Termal (Gesekan) -->
+                <div>
+                  <div class="flex justify-between text-xs font-extrabold mb-1">
+                    <span class="text-slate-600">Energi Termal (Etermal)</span>
+                    <span class="text-red-600 font-black" id="graph-eth-val">0 J</span>
+                  </div>
+                  <div class="w-full bg-slate-100 h-4 rounded-full overflow-hidden">
+                    <div id="graph-eth" class="bg-red-500 h-full transition-all duration-75" style="width: 0%"></div>
+                  </div>
+                </div>
+
+                <hr class="border-slate-200">
+
+                <!-- Energi Total -->
+                <div>
+                  <div class="flex justify-between text-xs font-extrabold mb-1">
+                    <span class="text-slate-800 font-black">Energi Total (Etotal)</span>
+                    <span class="text-amber-600 font-black" id="graph-etot-val">0 J</span>
+                  </div>
+                  <div class="w-full bg-slate-100 h-5 rounded-full overflow-hidden border border-slate-200 shadow-sm">
+                    <div id="graph-etot" class="bg-amber-400 h-full transition-all duration-75" style="width: 0%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Petunjuk Diskusi Guru -->
+            <div class="mt-6 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs md:text-sm text-slate-500 leading-relaxed space-y-1">
+              <strong class="text-slate-700 block mb-1">💡 Pertanyaan Diskusi di Kelas:</strong>
+              <p>1. Coba klik <strong>Pause</strong> tepat saat skater berada di dasar track. Berapakah nilai Ep-nya?</p>
+              <p>2. Saat di puncak, mengapa nilai Ek bernilai nol?</p>
+              <p>3. Apa akibatnya pada energi total jika kita meningkatkan hambatan <strong>Gesekan</strong>?</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= ASESMEN SECTION ================= -->
+      <section id="sec-asesmen" class="hidden space-y-6 animate-fadeIn">
+        <h2 class="text-2xl font-extrabold text-slate-800 flex items-center space-x-3">
+          <span class="bg-rose-100 text-rose-700 px-3 py-1.5 rounded-xl text-sm font-black">04</span>
+          <span>Kuis Formatif Interaktif</span>
+        </h2>
+        <p class="text-slate-600 text-sm">Ketuk pilihan jawaban di bawah. Sempurna untuk dijawab bersama murid menggunakan layar sentuh depan kelas.</p>
+
+        <!-- Quiz Container -->
+        <div id="quiz-container" class="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm max-w-3xl mx-auto space-y-6">
+          <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+            <span class="text-xs font-black text-slate-400 uppercase tracking-widest">Pertanyaan <span id="quiz-num">1</span> dari 5</span>
+            <span class="text-xs bg-rose-100 text-rose-700 font-black px-4 py-2 rounded-xl"><span id="quiz-score-badge">0</span> Poin</span>
+          </div>
+
+          <!-- Soal -->
+          <div class="space-y-4">
+            <h3 id="quiz-question" class="text-lg md:text-xl font-extrabold text-slate-800 leading-normal">Teks soal akan dimuat secara dinamis...</h3>
+            
+            <!-- Pilihan Jawaban Lebar (Sangat PID Friendly) -->
+            <div id="quiz-options" class="flex flex-col space-y-3 pt-2">
+              <!-- Opsi dimuat dinamis -->
+            </div>
+          </div>
+
+          <!-- Umpan Balik Jawaban -->
+          <div id="quiz-feedback" class="hidden p-5 rounded-2xl text-sm leading-relaxed border flex items-start space-x-4">
+            <div id="feedback-icon" class="p-3 rounded-xl text-white shrink-0"></div>
+            <div>
+              <p id="feedback-title" class="font-extrabold text-base"></p>
+              <p id="feedback-desc" class="text-slate-600 mt-1 leading-relaxed text-xs md:text-sm"></p>
+            </div>
+          </div>
+
+          <!-- Navigasi -->
+          <div class="flex justify-end pt-4">
+            <button id="btn-next-question" onclick="nextQuestion()" class="hidden bg-rose-600 hover:bg-rose-700 text-white font-extrabold px-8 py-4 rounded-2xl text-sm shadow-md transition duration-150 transform active:scale-95">
+              Soal Berikutnya &rarr;
+            </button>
+          </div>
+        </div>
+
+        <!-- Halaman Hasil Kuis -->
+        <div id="quiz-result" class="hidden bg-white p-8 md:p-10 rounded-3xl border border-slate-200 shadow-sm max-w-md mx-auto text-center space-y-6">
+          <div class="w-24 h-24 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </div>
+          <div>
+            <h3 class="text-2xl font-black text-slate-800">Uji Kompetensi Selesai!</h3>
+            <p class="text-sm text-slate-500 mt-2">Luar biasa telah berpartisipasi aktif dalam kegiatan asesmen hari ini!</p>
+          </div>
+
+          <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 font-mono">
+            <p class="text-xs text-slate-400 font-extrabold uppercase tracking-widest">Skor Akhir:</p>
+            <p class="text-5xl font-black text-rose-600 mt-2"><span id="final-score">0</span> / 100</p>
+          </div>
+
+          <button onclick="restartQuiz()" class="bg-rose-600 hover:bg-rose-700 text-white font-extrabold w-full py-4 rounded-2xl transition duration-150 transform active:scale-95">
+            Mulai Kuis Lagi
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= REFLEKSI SECTION ================= -->
+      <section id="sec-refleksi" class="hidden space-y-6 animate-fadeIn">
+        <div class="flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <h2 class="text-2xl font-extrabold text-slate-800 flex items-center space-x-3">
+              <span class="bg-teal-100 text-teal-700 px-3 py-1.5 rounded-xl text-sm font-black">05</span>
+              <span>Papan Refleksi Kelas</span>
+            </h2>
+            <p class="text-slate-600 text-sm">Tuliskan pengalaman belajarmu hari ini langsung pada papan digital kelas!</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <!-- Input Form Refleksi -->
+          <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-extrabold text-slate-800 text-base">Buat Memo Refleksi</h3>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-2">Nama Siswa / Kelompok</label>
+              <input type="text" id="ref-name" placeholder="Contoh: Kelompok 1, Budi, dll." class="w-full text-sm border-2 border-slate-200 rounded-xl p-3 focus:outline-none focus:border-teal-500 transition font-medium">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-2">Bagaimana Perasaanmu?</label>
+              <div class="grid grid-cols-4 gap-2">
+                <button onclick="selectEmoji('😃')" id="emoji-😃" class="emoji-btn border-2 border-teal-500 p-2.5 rounded-xl text-center text-2xl hover:bg-slate-50 transition bg-slate-50">😃</button>
+                <button onclick="selectEmoji('🤔')" id="emoji-🤔" class="emoji-btn border-2 border-transparent p-2.5 rounded-xl text-center text-2xl hover:bg-slate-50 transition">🤔</button>
+                <button onclick="selectEmoji('🤯')" id="emoji-🤯" class="emoji-btn border-2 border-transparent p-2.5 rounded-xl text-center text-2xl hover:bg-slate-50 transition">🤯</button>
+                <button onclick="selectEmoji('😴')" id="emoji-😴" class="emoji-btn border-2 border-transparent p-2.5 rounded-xl text-center text-2xl hover:bg-slate-50 transition">😴</button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-2">Hal menarik yang dipelajari</label>
+              <textarea id="ref-learned" rows="2" placeholder="Hari ini saya paling paham bagian..." class="w-full text-sm border-2 border-slate-200 rounded-xl p-3 focus:outline-none focus:border-teal-500 transition font-medium"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-2">Materi yang masih membingungkan</label>
+              <textarea id="ref-confused" rows="2" placeholder="Saya masih belum paham di bagian..." class="w-full text-sm border-2 border-slate-200 rounded-xl p-3 focus:outline-none focus:border-teal-500 transition font-medium"></textarea>
+            </div>
+            <button onclick="postReflection()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-extrabold py-4 rounded-2xl transition shadow-md shadow-teal-100 text-sm transform active:scale-95">
+              Tempel Refleksi &rarr;
+            </button>
+          </div>
+
+          <!-- Board List Sticky Notes -->
+          <div class="lg:col-span-2 space-y-4">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-black text-slate-400 uppercase tracking-widest">Daftar Memo Tertempel</span>
+              <span class="text-xs text-slate-500 font-bold"><span id="ref-count">2</span> Catatan Tertempel</span>
+            </div>
+
+            <div id="reflection-board" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Default Demo Notes -->
+              <div class="bg-amber-50 border border-amber-200 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                <div>
+                  <div class="flex justify-between items-center mb-3">
+                    <span class="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                      <span class="text-lg">😃</span> Kelompok Newton (8B)
+                    </span>
+                    <span class="bg-amber-200/50 text-amber-800 text-[10px] px-2 py-0.5 rounded font-black">Tersimpan</span>
+                  </div>
+                  <p class="text-xs text-slate-700 font-extrabold">Hal Menarik:</p>
+                  <p class="text-xs text-slate-600 italic mt-0.5">"Game menyortir usaha membuat kami mengerti kalau memikul tas sambil jalan mendatar bernilai 0 usaha!"</p>
+                  
+                  <p class="text-xs text-slate-700 font-extrabold mt-3">Masih Bingung:</p>
+                  <p class="text-xs text-slate-600 italic mt-0.5">"Masih bingung rumus matematis Energi Kinetik yang menggunakan kuadrat."</p>
+                </div>
+              </div>
+
+              <div class="bg-blue-50 border border-blue-200 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                <div>
+                  <div class="flex justify-between items-center mb-3">
+                    <span class="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                      <span class="text-lg">🤔</span> Kelompok Curie (8A)
+                    </span>
+                    <span class="bg-blue-200/50 text-blue-800 text-[10px] px-2 py-0.5 rounded font-black">Tersimpan</span>
+                  </div>
+                  <p class="text-xs text-slate-700 font-extrabold">Hal Menarik:</p>
+                  <p class="text-xs text-slate-600 italic mt-0.5">"Simulasi skatepark sangat membantu melihat energi total yang ternyata selalu sama."</p>
+                  
+                  <p class="text-xs text-slate-700 font-extrabold mt-3">Masih Bingung:</p>
+                  <p class="text-xs text-slate-600 italic mt-0.5">"Kenapa gesekan menghasilkan panas?"</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-slate-200 px-6 py-4 text-center text-xs text-slate-400 z-10 shrink-0">
+    &copy; 2026 Media Pembelajaran Interaktif (MPI) IPA &bull; Rencana Microteaching SMP Kelas VIII &bull; Dioptimalkan untuk Layar Sentuh.
+  </footer>
+
+  <script>
+    // ================= MAIN TAB NAVIGATION =================
+    function switchTab(tabId) {
+      document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+      document.getElementById('sec-' + tabId).classList.remove('hidden');
+
+      // Update sidebar styling
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-50', 'text-blue-600', 'border-blue-100', 'border-2');
+        btn.classList.add('text-slate-600', 'hover:bg-slate-50', 'border-transparent');
+      });
+      document.getElementById('btn-' + tabId).classList.remove('text-slate-600', 'hover:bg-slate-50', 'border-transparent');
+      document.getElementById('btn-' + tabId).classList.add('bg-blue-50', 'text-blue-600', 'border-blue-100', 'border-2');
+
+      if (tabId === 'simulasi') {
+        initPhysicsSimulation();
+      } else {
+        stopPhysicsSimulation();
+      }
+    }
+
+    // ================= SUB TAB NAVIGATION UNTUK EKSPLORASI KONSEP =================
+    function switchSubMateri(materiId) {
+      document.querySelectorAll('.materi-block').forEach(content => content.classList.add('hidden'));
+      document.getElementById('materi-' + materiId).classList.remove('hidden');
+
+      document.querySelectorAll('.materi-tab-btn').forEach(btn => {
+        btn.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-700');
+        btn.classList.add('border-transparent', 'text-slate-600', 'hover:bg-slate-100');
+      });
+      document.getElementById('btn-sub-' + materiId).classList.remove('border-transparent', 'text-slate-600', 'hover:bg-slate-100');
+      document.getElementById('btn-sub-' + materiId).classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-700');
+    }
+
+    // ================= SPIDOL KELAS/ANNOTATION OVERLAY (PID) =================
+    let isDrawing = false;
+    let drawingEnabled = false;
+    let wbCanvas, wbCtx;
+    let penColor = '#ef4444';
+
+    function toggleDrawingMode() {
+      wbCanvas = document.getElementById('whiteboard-canvas');
+      wbCtx = wbCanvas.getContext('2d');
+      const btn = document.getElementById('btn-draw-toggle');
+      const opt = document.getElementById('draw-options');
+
+      drawingEnabled = !drawingEnabled;
+
+      if (drawingEnabled) {
+        document.body.classList.add('no-scroll');
+        wbCanvas.classList.remove('hidden');
+        wbCanvas.classList.add('drawing-mode');
+        wbCanvas.width = window.innerWidth;
+        wbCanvas.height = window.innerHeight;
+        
+        btn.classList.remove('bg-slate-100', 'text-slate-700');
+        btn.classList.add('bg-indigo-600', 'text-white');
+        opt.classList.remove('hidden');
+
+        // Event listener mouse
+        wbCanvas.addEventListener('mousedown', startDrawing);
+        wbCanvas.addEventListener('mousemove', draw);
+        wbCanvas.addEventListener('mouseup', stopDrawing);
+        wbCanvas.addEventListener('mouseout', stopDrawing);
+
+        // Event listener layar sentuh PID
+        wbCanvas.addEventListener('touchstart', startDrawingTouch, { passive: false });
+        wbCanvas.addEventListener('touchmove', drawTouch, { passive: false });
+        wbCanvas.addEventListener('touchend', stopDrawing, { passive: false });
+      } else {
+        document.body.classList.remove('no-scroll');
+        wbCanvas.classList.add('hidden');
+        wbCanvas.classList.remove('drawing-mode');
+        btn.classList.remove('bg-indigo-600', 'text-white');
+        btn.classList.add('bg-slate-100', 'text-slate-700');
+        opt.classList.add('hidden');
+      }
+    }
+
+    function setPenColor(color) {
+      penColor = color;
+    }
+
+    function clearWhiteboard() {
+      if (wbCtx) {
+        wbCtx.clearRect(0, 0, wbCanvas.width, wbCanvas.height);
+      }
+    }
+
+    function startDrawing(e) {
+      isDrawing = true;
+      wbCtx.beginPath();
+      wbCtx.moveTo(e.clientX, e.clientY);
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+      wbCtx.lineWidth = 5;
+      wbCtx.lineCap = 'round';
+      wbCtx.strokeStyle = penColor;
+      wbCtx.lineTo(e.clientX, e.clientY);
+      wbCtx.stroke();
+    }
+
+    function startDrawingTouch(e) {
+      isDrawing = true;
+      wbCtx.beginPath();
+      const touch = e.touches[0];
+      wbCtx.moveTo(touch.clientX, touch.clientY);
+      e.preventDefault();
+    }
+
+    function drawTouch(e) {
+      if (!isDrawing) return;
+      wbCtx.lineWidth = 5;
+      wbCtx.lineCap = 'round';
+      wbCtx.strokeStyle = penColor;
+      const touch = e.touches[0];
+      wbCtx.lineTo(touch.clientX, touch.clientY);
+      wbCtx.stroke();
+      e.preventDefault();
+    }
+
+    function stopDrawing() {
+      isDrawing = false;
+    }
+
+    // ================= STREAMING_CHUNK: Penulisan Logika Analisis & Klasifikasi Kasus =================
+    function showApersepsiExplanation(tipe) {
+      const expBox = document.getElementById('apersepsi-explanation');
+      const title = document.getElementById('explanation-title');
+      const text = document.getElementById('explanation-text');
+      const conclusion = document.getElementById('explanation-conclusion');
+
+      expBox.classList.remove('hidden');
+
+      if (tipe === 'tembok') {
+        title.innerText = "Analisis Usaha: Mendorong Tembok";
+        text.innerText = "Mengapa usahamu bernilai 0 (nol) menurut Fisika? Karena meskipun kamu sudah menyalurkan gaya dorong (F) yang luar biasa besar sampai berkeringat, tembok tersebut tidak bergeser atau berpindah sama sekali (s = 0). Tanpa perpindahan, tidak terjadi transfer energi mekanik dari tubuhmu ke objek.";
+        conclusion.innerHTML = "Usaha (W) = F &times; s = F &times; 0 = 0 Joule (USAHA BERNILAI NOL)";
+      } else if (tipe === 'kursi') {
+        title.innerText = "Analisis Usaha: Mendorong Kursi";
+        text.innerText = "Pada kursi beroda, gaya dorong sedang yang kamu berikan sanggup menggerakkan kursi berpindah posisi sejauh 3 meter (s = 3). Gaya dorongmu bekerja sukses sejalan dengan arah gerak perpindahan benda, sehingga menghasilkan usaha mekanik yang nyata.";
+        conclusion.innerHTML = "Usaha (W) = Gaya &times; Perpindahan (USAHA BERNILAI POSITIF / NYATA)";
+      }
+
+      expBox.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Klasifikasi Kasus Game Controller
+    function checkClassification(caseNum, answer, btnElement) {
+      const parent = document.getElementById('case-' + caseNum);
+      const feedback = parent.querySelector('.case-feedback');
+      const buttons = parent.querySelectorAll('button');
+
+      buttons.forEach(b => b.disabled = true);
+      feedback.classList.remove('hidden');
+
+      let correct = false;
+      let text = "";
+
+      if (caseNum === 1) {
+        if (answer === 'no') {
+          correct = true;
+          text = "Benar! Meskipun memikul tas sangat berat, karena Siti hanya berdiri diam (perpindahan s = 0), maka Usaha (W) = 0.";
+        } else {
+          text = "Salah. Karena Siti diam tidak berpindah tempat (s = 0), maka tidak ada usaha mekanik.";
+        }
+      } else if (caseNum === 2) {
+        if (answer === 'yes') {
+          correct = true;
+          text = "Benar! Ada gaya tarik (F) dan mobil mainan berpindah posisi (s = 4 m).";
+        } else {
+          text = "Salah. Mobil mainan berpindah sejauh 4 meter akibat ditarik, ini adalah Usaha Positif.";
+        }
+      } else if (caseNum === 3) {
+        if (answer === 'yes') {
+          correct = true;
+          text = "Benar! Atlet memberikan gaya ke atas dan beban berpindah ke atas (W > 0).";
+        } else {
+          text = "Salah. Beban berpindah posisi secara vertikal dari tanah ke atas kepala atlet, ada usaha.";
+        }
+      } else if (caseNum === 4) {
+        if (answer === 'no') {
+          correct = true;
+          text = "Benar! Saat berjalan mendatar, gaya angkat kardus mengarah vertikal ke atas, sedangkan perpindahan mengarah horizontal ke samping. Karena gaya tegak lurus arah gerak (sudut 90 derajat), usahanya bernilai 0!";
+        } else {
+          text = "Salah. Meskipun lelah berjalan, karena arah gaya memikul (ke atas) tegak lurus dengan arah gerak (mendatar), maka usahanya bernilai nol.";
+        }
+      } else if (caseNum === 5) {
+        if (answer === 'no') {
+          correct = true;
+          text = "Benar! Meskipun didorong dengan tenaga maksimal oleh banyak orang, jika mobil tidak berpindah posisi sama sekali (s = 0), maka usahanya tetap nol.";
+        } else {
+          text = "Salah. Syarat mutlak terjadinya usaha dalam Fisika adalah adanya perpindahan posisi benda. Jika s = 0, maka usaha W = 0.";
+        }
+      } else if (caseNum === 6) {
+        if (answer === 'no') {
+          correct = true;
+          text = "Benar! Kucing diam tidak melakukan gaya gerak dan tidak berpindah posisi, sehingga usaha yang terjadi adalah nol.";
+        } else {
+          text = "Salah. Kucing tidur tidak mengerahkan gaya dan tidak berpindah tempat, jadi usahanya bernilai nol.";
+        }
+      }
+
+      if (correct) {
+        btnElement.classList.add('bg-emerald-600', 'text-white', 'border-emerald-600');
+        feedback.className = "case-feedback text-xs font-bold mt-2 text-emerald-600";
+      } else {
+        btnElement.classList.add('bg-red-600', 'text-white', 'border-red-600');
+        feedback.className = "case-feedback text-xs font-bold mt-2 text-red-500";
+      }
+
+      feedback.innerText = text;
+    }
+
+    // ================= STREAMING_CHUNK: Penulisan Kalkulator Fisika Eksplorasi Konsep =================
+    // ================= STEP-BY-STEP MATHEMATICAL SOLVERS =================
+    function runUsahaCalc() {
+      const f = parseFloat(document.getElementById('input-f').value);
+      const s = parseFloat(document.getElementById('input-s').value);
+
+      document.getElementById('val-f').innerText = f;
+      document.getElementById('val-s').innerText = s;
+      
+      const res = f * s;
+      document.getElementById('res-u-value').innerText = res;
+
+      // Update Solves
+      document.getElementById('step-u-f').innerText = f;
+      document.getElementById('step-u-s').innerText = s;
+      document.getElementById('sub-u-f').innerText = f;
+      document.getElementById('sub-u-s').innerText = s;
+      document.getElementById('fin-u').innerText = res;
+
+      // Update Animation Box
+      const box = document.getElementById('materi-box-usaha');
+      const arrow = document.getElementById('materi-arrow-usaha');
+      box.style.left = `calc(10% + (${s} * 2.5%))`;
+      arrow.style.left = `calc(2% + (${s} * 2.5%))`;
+    }
+
+    function runEpCalc() {
+      const m = parseFloat(document.getElementById('input-ep-m').value);
+      const h = parseFloat(document.getElementById('input-ep-h').value);
+      const g = 10;
+
+      document.getElementById('val-ep-m').innerText = m;
+      document.getElementById('val-ep-h').innerText = h;
+
+      const res = m * g * h;
+      document.getElementById('res-ep-value').innerText = res;
+
+      // Update Solves
+      document.getElementById('step-ep-m').innerText = m;
+      document.getElementById('step-ep-h').innerText = h;
+      document.getElementById('sub-ep-m').innerText = m;
+      document.getElementById('sub-ep-h').innerText = h;
+      document.getElementById('fin-ep').innerText = res;
+
+      // Update Animation Apple
+      const apple = document.getElementById('materi-box-ep');
+      apple.style.bottom = `calc(8px + (${h} * 8px))`;
+    }
+
+    function runEkCalc() {
+      const m = parseFloat(document.getElementById('input-ek-m').value);
+      const v = parseFloat(document.getElementById('input-ek-v').value);
+
+      document.getElementById('val-ek-m').innerText = m;
+      document.getElementById('val-ek-v').innerText = v;
+
+      const res = 0.5 * m * (v * v);
+      document.getElementById('res-ek-value').innerText = res;
+
+      // Update Solves
+      document.getElementById('step-ek-m').innerText = m;
+      document.getElementById('step-ek-v').innerText = v;
+      document.getElementById('sub-ek-m').innerText = m;
+      document.getElementById('sub-ek-v2').innerText = v * v;
+      document.getElementById('fin-ek').innerText = res;
+
+      // Update Animation Car
+      const car = document.getElementById('materi-box-ek');
+      car.style.left = `calc(10% + (${v} * 5%))`;
+    }
+
+    // ================= STREAMING_CHUNK: Implementasi Loop Animasi Simulasi Skate Park =================
+    // ================= PHYSICS SIMULATION (SKATE PARK Basics) =================
+    let animationId = null;
+    let canvas, ctx;
+    let isSimPlaying = true;
+    let skater = {
+      x: 100,
+      y: 100,
+      mass: 60,
+      gravity: 9.8,
+      friction: 0,
+      t: 0,
+      amplitude: 150,
+      damping: 0,
+    };
+
+    function initPhysicsSimulation() {
+      canvas = document.getElementById('physics-canvas');
+      if (!canvas) return;
+      ctx = canvas.getContext('2d');
+      resetSkater();
+      if (!animationId) {
+        animateLoop();
+      }
+    }
+
+    function toggleSimPlay() {
+      isSimPlaying = !isSimPlaying;
+      const btnIcon = document.getElementById('play-btn-icon');
+      const btnText = document.getElementById('play-btn-text');
+
+      if (isSimPlaying) {
+        btnIcon.innerText = "⏸";
+        btnText.innerText = "Pause";
+      } else {
+        btnIcon.innerText = "▶";
+        btnText.innerText = "Mulai";
+      }
+    }
+
+    function stopPhysicsSimulation() {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+    }
+
+    function resetSkater() {
+      skater.t = 0;
+      skater.amplitude = 180; 
+      updateSimParams();
+    }
+
+    function updateSimParams() {
+      skater.mass = parseFloat(document.getElementById('sim-control-mass').value);
+      skater.gravity = parseFloat(document.getElementById('sim-control-grav').value);
+      
+      const frictionInput = parseFloat(document.getElementById('sim-control-fric').value);
+      skater.friction = frictionInput;
+      skater.damping = frictionInput * 0.0015;
+
+      document.getElementById('lbl-mass').innerText = skater.mass + ' kg';
+      
+      let gravText = 'Bumi (9.8)';
+      if (skater.gravity === 1.6) gravText = 'Bulan (1.6)';
+      if (skater.gravity === 24.8) gravText = 'Jupiter (24.8)';
+      document.getElementById('lbl-gravity').innerText = gravText;
+
+      let fricText = 'Nol';
+      if (frictionInput > 0 && frictionInput <= 3) fricText = 'Sedikit';
+      if (frictionInput > 3 && frictionInput <= 7) fricText = 'Sedang';
+      if (frictionInput > 7) fricText = 'Banyak';
+      document.getElementById('lbl-friction').innerText = fricText;
+    }
+
+    function animateLoop() {
+      if (!canvas || !ctx) return;
+
+      if (isSimPlaying) {
+        skater.t += 0.035;
+      }
+
+      // Rumus Parabola Lintasan Skatepark
+      const omega = Math.sqrt(skater.gravity / 10) * 0.75;
+      const currentAmp = skater.amplitude * Math.exp(-skater.damping * skater.t);
+      const centerX = canvas.width / 2;
+      const trackBottomY = 240; 
+      
+      const dx = currentAmp * Math.cos(omega * skater.t);
+      skater.x = centerX + dx;
+      
+      const k = 0.0028; 
+      skater.y = trackBottomY - k * dx * dx;
+
+      // Hitung Fisika Energi
+      const height = (trackBottomY - skater.y); 
+      const maxEp = skater.mass * skater.gravity * 180 * k; 
+      const currentTot = skater.mass * skater.gravity * currentAmp * 180 * k; 
+
+      const ep = skater.mass * skater.gravity * height * k;
+      const eth = Math.max(0, maxEp - currentTot);
+      const ek = Math.max(0, currentTot - ep);
+      const etot = maxEp; 
+
+      // Update Grafik Batang
+      updateGraphs(ek, ep, eth, etot);
+
+      // Gambar Elemen Canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Background Langit Ruang Angkasa/Malam
+      ctx.fillStyle = "rgba(11, 15, 30, 0.95)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Gambar grid tipis agar kelihatan ilmiah
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < canvas.width; i += 30) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, canvas.height);
+        ctx.stroke();
+      }
+      for (let j = 0; j < canvas.height; j += 30) {
+        ctx.beginPath();
+        ctx.moveTo(0, j);
+        ctx.lineTo(canvas.width, j);
+        ctx.stroke();
+      }
+
+      // Gambar Lintasan Melengkung
+      ctx.beginPath();
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = '#475569';
+      for (let x = 30; x <= canvas.width - 30; x++) {
+        const d_x = x - centerX;
+        const trackY = trackBottomY + k * d_x * d_x;
+        if (x === 30) {
+          ctx.moveTo(x, trackY);
+        } else {
+          ctx.lineTo(x, trackY);
+        }
+      }
+      ctx.stroke();
+
+      // Gambar Rel Neon (Style Menarik untuk PID)
+      ctx.beginPath();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#38bdf8';
+      for (let x = 30; x <= canvas.width - 30; x++) {
+        const d_x = x - centerX;
+        const trackY = trackBottomY + k * d_x * d_x;
+        if (x === 30) {
+          ctx.moveTo(x, trackY + 3);
+        } else {
+          ctx.lineTo(x, trackY + 3);
+        }
+      }
+      ctx.stroke();
+
+      // Tiang Penyangga Tengah
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(centerX - 12, trackBottomY + 8, 24, canvas.height - trackBottomY);
+
+      // Karakter Skater
+      const skaterY = trackBottomY + k * dx * dx;
+      const slope = 2 * k * dx;
+      const angle = Math.atan(slope);
+
+      ctx.save();
+      ctx.translate(skater.x, skaterY - 14); 
+      ctx.rotate(angle);
+
+      // Papan Skateboard
+      ctx.fillStyle = '#eab308';
+      ctx.fillRect(-16, 2, 32, 5);
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(-11, 9, 5, 0, Math.PI * 2);
+      ctx.arc(11, 9, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Karakter Guru/Siswa Ber-Skate
+      ctx.fillStyle = '#3b82f6';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#3b82f6';
+      ctx.beginPath();
+      ctx.moveTo(-4, 0);
+      ctx.lineTo(-2, -10);
+      ctx.moveTo(4, 0);
+      ctx.lineTo(2, -10);
+      ctx.stroke();
+      
+      ctx.fillRect(-5, -24, 10, 14);
+      ctx.fillStyle = '#fecdd3';
+      ctx.beginPath();
+      ctx.arc(0, -30, 6, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Helm Pelindung (Merah)
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(0, -31, 6.5, Math.PI, 0);
+      ctx.fill();
+
+      ctx.restore();
+
+      animationId = requestAnimationFrame(animateLoop);
+    }
+
+    function updateGraphs(ek, ep, eth, etot) {
+      const scale = 100 / etot;
+      
+      const ekPct = Math.min(100, ek * scale);
+      const epPct = Math.min(100, ep * scale);
+      const ethPct = Math.min(100, eth * scale);
+      const etotPct = Math.min(100, (ek + ep + eth) * scale); 
+
+      document.getElementById('graph-ek').style.width = ekPct + '%';
+      document.getElementById('graph-ep').style.width = epPct + '%';
+      document.getElementById('graph-eth').style.width = ethPct + '%';
+      document.getElementById('graph-etot').style.width = etotPct + '%';
+
+      document.getElementById('graph-ek-val').innerText = Math.round(ek) + ' J';
+      document.getElementById('graph-ep-val').innerText = Math.round(ep) + ' J';
+      document.getElementById('graph-eth-val').innerText = Math.round(eth) + ' J';
+      document.getElementById('graph-etot-val').innerText = Math.round(ek + ep + eth) + ' J';
+    }
+
+    // ================= STREAMING_CHUNK: Penyusunan Bank Soal Kuis Formatif =================
+    // ================= INTERACTIVE QUIZ DATABASE =================
+    const quizData = [
+      {
+        question: "Dua orang siswa bernama Budi dan Toni mendorong meja yang sama dari arah yang berlawanan. Budi mendorong ke kanan dengan gaya 80 N, sedangkan Toni mendorong ke kiri dengan gaya 80 N. Meja tetap diam di tempatnya. Usaha total yang dilakukan kedua anak tersebut adalah...",
+        options: [
+          "0 Joule",
+          "160 Joule",
+          "640 Joule",
+          "1600 Joule"
+        ],
+        correct: 0,
+        explanation: "Karena kedua gaya saling meniadakan (Resultan Gaya = 0) dan meja tetap diam (s = 0), maka tidak ada perpindahan yang terjadi. Sehingga usaha bernilai Nol."
+      },
+      {
+        question: "Beni mendorong kereta belanja dengan gaya konstan 40 Newton hingga kereta tersebut bergerak lurus searah sejauh 5 meter. Berapakah usaha yang dikerjakan oleh Beni?",
+        options: [
+          "8 Joule",
+          "45 Joule",
+          "200 Joule",
+          "400 Joule"
+        ],
+        correct: 2,
+        explanation: "Menggunakan rumus W = F x s. Maka W = 40 N x 5 m = 200 Joule."
+      },
+      {
+        question: "Sebuah pepaya matang bermassa 2 kg bergantung di dahan pohon pada ketinggian 5 meter dari tanah. Jika percepatan gravitasi bumi bernilai 10 m/s2, tentukan Energi Potensial buah pepaya tersebut!",
+        options: [
+          "10 Joule",
+          "25 Joule",
+          "50 Joule",
+          "100 Joule"
+        ],
+        correct: 3,
+        explanation: "Menggunakan rumus Ep = m x g x h. Ep = 2 kg x 10 m/s2 x 5 m = 100 Joule."
+      },
+      {
+        question: "Sebuah sepeda mainan bermassa 4 kg bergerak dengan kecepatan konstan sebesar 3 m/s. Energi kinetik yang dimiliki sepeda tersebut adalah...",
+        options: [
+          "6 Joule",
+          "12 Joule",
+          "18 Joule",
+          "36 Joule"
+        ],
+        correct: 2,
+        explanation: "Menggunakan rumus Ek = 0,5 x m x v2. Ek = 0.5 x 4 kg x (3 m/s)2 = 2 x 9 = 18 Joule."
+      },
+      {
+        question: "Saat skater meluncur turun ke titik terendah pada simulasi lintasan licin sempurna (tanpa gesekan), maka Energi Mekanik skater tersebut akan...",
+        options: [
+          "Habis tak tersisa di titik terbawah",
+          "Berkurang secara bertahap",
+          "Bertambah karena kecepatan bertambah",
+          "Selalu tetap konstan di setiap posisi"
+        ],
+        correct: 3,
+        explanation: "Hukum Kekekalan Energi Mekanik menyatakan jika tidak ada gesekan luar, jumlah energi mekanik (Ep + Ek) bernilai selalu konstan. Di titik terendah, seluruh Ep berubah menjadi Ek."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+
+    function initQuiz() {
+      currentQuizIndex = 0;
+      quizScore = 0;
+      document.getElementById('quiz-score-badge').innerText = '0';
+      document.getElementById('quiz-result').classList.add('hidden');
+      document.getElementById('quiz-container').classList.remove('hidden');
+      loadQuestion();
+    }
+
+    function loadQuestion() {
+      const q = quizData[currentQuizIndex];
+      document.getElementById('quiz-num').innerText = currentQuizIndex + 1;
+      document.getElementById('quiz-question').innerText = q.question;
+
+      const optionsDiv = document.getElementById('quiz-options');
+      optionsDiv.innerHTML = '';
+
+      q.options.forEach((opt, index) => {
+        const btn = document.createElement('button');
+        btn.className = "quiz-opt-btn border-2 border-slate-200 text-left px-5 py-4 rounded-2xl text-base font-extrabold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition duration-150 flex items-center justify-between";
+        btn.innerHTML = `
+          <span>${opt}</span>
+          <span class="opt-indicator text-xs font-black text-slate-400">Pilihan ${String.fromCharCode(65 + index)}</span>
+        `;
+        btn.onclick = () => selectOption(index, btn);
+        optionsDiv.appendChild(btn);
+      });
+
+      document.getElementById('quiz-feedback').classList.add('hidden');
+      document.getElementById('btn-next-question').classList.add('hidden');
+    }
+
+    function selectOption(selectedIndex, btnElement) {
+      const q = quizData[currentQuizIndex];
+      const allButtons = document.querySelectorAll('.quiz-opt-btn');
+
+      allButtons.forEach(btn => btn.disabled = true);
+
+      const feedbackBox = document.getElementById('quiz-feedback');
+      const fIcon = document.getElementById('feedback-icon');
+      const fTitle = document.getElementById('feedback-title');
+      const fDesc = document.getElementById('feedback-desc');
+
+      feedbackBox.classList.remove('hidden');
+
+      if (selectedIndex === q.correct) {
+        quizScore += 20;
+        document.getElementById('quiz-score-badge').innerText = quizScore;
+        btnElement.classList.remove('border-slate-200');
+        btnElement.classList.add('bg-emerald-50', 'border-emerald-500', 'text-emerald-900');
+        
+        fIcon.className = "p-3 rounded-xl bg-emerald-600 text-white";
+        fIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>`;
+        fTitle.innerText = "Jawaban Tepat! 🎉";
+        fTitle.className = "font-black text-emerald-800 text-lg";
+      } else {
+        btnElement.classList.remove('border-slate-200');
+        btnElement.classList.add('bg-rose-50', 'border-rose-400', 'text-rose-900');
+
+        allButtons[q.correct].classList.remove('border-slate-200');
+        allButtons[q.correct].classList.add('bg-emerald-50', 'border-emerald-400', 'text-emerald-900');
+
+        fIcon.className = "p-3 rounded-xl bg-rose-500 text-white";
+        fIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" /></svg>`;
+        fTitle.innerText = "Kurang Tepat 😅";
+        fTitle.className = "font-black text-rose-800 text-lg";
+      }
+
+      fDesc.innerText = q.explanation;
+      document.getElementById('btn-next-question').classList.remove('hidden');
+    }
+
+    function nextQuestion() {
+      currentQuizIndex++;
+      if (currentQuizIndex < quizData.length) {
+        loadQuestion();
+      } else {
+        showQuizResult();
+      }
+    }
+
+    function showQuizResult() {
+      document.getElementById('quiz-container').classList.add('hidden');
+      document.getElementById('quiz-result').classList.remove('hidden');
+      document.getElementById('final-score').innerText = quizScore;
+    }
+
+    function restartQuiz() {
+      initQuiz();
+    }
+
+
+    // ================= STREAMING_CHUNK: Implementasi Fitur Posting Refleksi Kelas =================
+    // ================= BOARD REFLECTION COLLABORATION =================
+    let selectedRefEmoji = '😃';
+
+    function selectEmoji(emoji) {
+      selectedRefEmoji = emoji;
+      document.querySelectorAll('.emoji-btn').forEach(btn => btn.classList.remove('bg-slate-50', 'border-teal-500'));
+      document.getElementById('emoji-' + emoji).classList.add('bg-slate-50', 'border-teal-500');
+    }
+
+    function postReflection() {
+      const name = document.getElementById('ref-name').value.trim() || "Kelompok Tanpa Nama";
+      const learned = document.getElementById('ref-learned').value.trim();
+      const confused = document.getElementById('ref-confused').value.trim();
+
+      if (!learned || !confused) {
+        // Simple custom text-box representation replacing alerts (PID Friendly)
+        const warnCard = document.createElement('div');
+        warnCard.className = "bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 text-xs font-bold fixed top-6 left-1/2 transform -translate-x-1/2 z-50 shadow-lg";
+        warnCard.innerText = "Mohon isi formulir refleksi dengan lengkap!";
+        document.body.appendChild(warnCard);
+        setTimeout(() => warnCard.remove(), 2500);
+        return;
+      }
+
+      const board = document.getElementById('reflection-board');
+      const card = document.createElement('div');
+      
+      const cardBg = selectedRefEmoji === '😃' ? 'bg-emerald-50 border-emerald-200' :
+                     selectedRefEmoji === '🤔' ? 'bg-amber-50 border-amber-200' :
+                     selectedRefEmoji === '🤯' ? 'bg-purple-50 border-purple-200' : 'bg-slate-100 border-slate-300';
+
+      card.className = `${cardBg} border p-5 rounded-2xl shadow-sm flex flex-col justify-between transform transition duration-300 hover:scale-105`;
+      card.innerHTML = `
+        <div>
+          <div class="flex justify-between items-center mb-3">
+            <span class="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
+              <span class="text-lg">${selectedRefEmoji}</span> ${name}
+            </span>
+            <span class="bg-white/70 text-slate-600 text-[10px] px-2 py-0.5 rounded font-black">Baru saja</span>
+          </div>
+          <p class="text-xs text-slate-700 font-extrabold">Hal Menarik:</p>
+          <p class="text-xs text-slate-600 italic mt-0.5">"${learned}"</p>
+          
+          <p class="text-xs text-slate-700 font-extrabold mt-3">Masih Bingung:</p>
+          <p class="text-xs text-slate-600 italic mt-0.5">"${confused}"</p>
+        </div>
+      `;
+
+      board.insertBefore(card, board.firstChild);
+
+      const currentCount = parseInt(document.getElementById('ref-count').innerText);
+      document.getElementById('ref-count').innerText = currentCount + 1;
+
+      // Reset Form
+      document.getElementById('ref-name').value = '';
+      document.getElementById('ref-learned').value = '';
+      document.getElementById('ref-confused').value = '';
+    }
+
+    // ================= WINDOW INITIALIZATION =================
+    window.onload = function() {
+      switchTab('beranda');
+      runUsahaCalc();
+      runEpCalc();
+      runEkCalc();
+      initQuiz();
+    }
+  </script>
+</body>
+</html>
